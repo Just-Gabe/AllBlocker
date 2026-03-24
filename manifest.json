@@ -1,6 +1,6 @@
 {
     "manifest_version": 2,
-    "name": "adblock",
+    "name": "AllBlocker",
     "version": "1.0",
     "description": "Bloqueia tudo sem dó",
     "icons": {
