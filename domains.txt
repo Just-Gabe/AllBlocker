@@ -434,7 +434,6 @@ galikos.com
 #
 #
 # Podejrzane i/lub strony polaczone z innymi oszustwami
- >>>>>>>> https://raw.githubusercontent.com/FiltersHeroes/KAD/master/sections/podejrzane_inne_oszustwa.txt => host4life.co4shoes.com.p4shoes.p7vulkanvegas37.co8vulkanvegas.co9print.p23vulkanvegas.co24-sklep.p24vulkanvegas.co25timesgg.sho25vulkanvegas.co26vulkanvegas.co27vulkanvegas.co28vulkanvegas.co90air.p201vulkanvegas.coa1a.pabctrack.infacaiberryextreme.pachae.coactus.org.padblock-listefr.coadeptia.padipexretard.padoreme.zonadresowkapsa.padworkmedia.coaffiliater.pafricanmango.pagropolbud.pagroturist.com.pajigxy.shoakredytowane.palamoni.coalconv.coaldaniti.nealeperfumeria.palerter.paleshop.palfabetzdrowia.com.palfazv.coalise.palkotoxv.coallfiles.palohafromdeer.coaloyogapolska.coaltrarunningpl.coamgdoor.coandroidgameshacks.coanimi2.coankiety-konsumenckie.pannajuliana.coanpicker.coanwan.paplexbode.coappcaptcha.coappleking.papteka2000.paquafit24.paquafit.sklep.parchfitpl.coareyouabot.neareyouahuman.cariix.coarilook.coarkonfinance.parlento.parrow-finance.partusor.myshopify.coasicspolska.coasmanta.coassay.patcofiles.coatrium-copernicus.patrium-konie.pattire.com.pattirra.coatwi.paudio-book.net.paudmax.pauger.paureliahealth.pautoforum-businessday.pautomatkredytowy.pavita.net.pawarialaptopa.pawin.coawizowane.pb2work.pb17-sklep.pbabyboofashionpolska.cobadshop.pbajkowewnetrza.pbajkowewnetrzakids.pbanvar.cobartekzukiewicz.pbdjfehusi.shobdsm.pbeauty-direct.pbecconet.cobeffino.cobellarose.pl
  berryen.com
  bestcena.pl
  bestnfast.pl
@@ -57279,11 +57278,9 @@ pobierz.biz
  zzdxe.com
  zzsyt.com
  zztwkj.com
- <<<<<<<< https://raw.githubusercontent.com/FiltersHeroes/KAD/master/sections/przekrety.txt + https://raw.githubusercontent.com/FiltersHeroes/KAD/master/sections/przekrety_CERT.txt => hosts
 #
 #
 # Blogspot
- >>>>>>>> https://raw.githubusercontent.com/FiltersHeroes/KAD/master/sections/blogspot.txt => hosts
  24moviess.blogspot.com
  123musicblend.blogspot.com
  accelerationlife.blogspot.com
@@ -57793,11 +57790,9 @@ pobierz.biz
  zmienienie-koloru.blogspot.com
  zmienkolorfejsazafree.blogspot.com
  zobaczktopodgladaa.blogspot.com
- <<<<<<<< https://raw.githubusercontent.com/FiltersHeroes/KAD/master/sections/blogspot.txt => hosts
 #
 #
 # Dodatki hosts
- >>>>>>>> hostsplus + hostsplus-cert => hosts
  4s13t.doctortrf.com
  05agu.doctortrf.com
  a-tocard-pl.treasure-shop.org
