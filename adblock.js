@@ -1,4 +1,5 @@
 const adSelectors = [
+    "#panels",
     ".ad-container",
     ".adsense",
     ".ads-box",
