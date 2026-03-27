@@ -6,7 +6,7 @@ let blockedPatternRegex = null;
 const cache = new Map();
 const MAX_CACHE = 5000;
 
-const DEBUG = false; // Ativar logs detalhados para desenvolvimento
+const DEBUG = true; // Ativar logs detalhados para desenvolvimento
 
 async function loadBlocklist() {
     try {
@@ -65,9 +65,13 @@ function isBlocked(hostname, fullUrl) {
         return true;
     }
 
+    const hostnameLower = hostname.toLowerCase();
+    // if (hostnameLower.startsWith('rr2') || hostnameLower.startsWith('rr3') || hostnameLower.startsWith('rr4') || hostnameLower.startsWith('rr5') || hostnameLower.startsWith('rr6') || hostnameLower.startsWith('rr7') || hostnameLower.startsWith('rr8') || hostnameLower.startsWith('rr1')) {
+    //     return true;
+    // }
+
     // Depois verificar domínios
     let dotIndex = 0;
-    const hostnameLower = hostname.toLowerCase();
 
     while (true) {
         if (blockedDomainsSet.has(hostnameLower.substring(dotIndex))) {
