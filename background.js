@@ -1,47 +1,75 @@
+"use strict";
+
+// Logs detalhados. MANTER DESLIGADO EM PRODUCAO: cada console.log no listener
+// de webRequest acontece em TODA requisicao da pagina e trava a main thread.
+const DEBUG = false;
 
 let blockedDomainsSet = new Set();
 let blockedPatterns = [];
 let blockedPatternRegex = null;
 
-const cache = new Map();
-const MAX_CACHE = 5000;
+// Cache por HOSTNAME (nao por URL). Uma pagina faz centenas de requests para
+// poucos hosts, entao o hit rate e muito maior e a memoria muito menor.
+// Eviccao FIFO: remove a entrada mais antiga em vez de dar cache.clear(),
+// que zerava tudo de uma vez e causava picos de recomputo.
+const hostCache = new Map();
+const MAX_HOST_CACHE = 4096;
 
-const DEBUG = false; // Ativar logs detalhados para desenvolvimento
+function cacheHostResult(host, blocked) {
+    if (hostCache.size >= MAX_HOST_CACHE) {
+        hostCache.delete(hostCache.keys().next().value);
+    }
+    hostCache.set(host, blocked);
+}
 
 console.log("Iniciando AllBlocker...");
+
 async function loadBlocklist() {
     try {
         if (DEBUG) console.log("Carregando blocklist...");
 
-        const url = browser.runtime.getURL('domains.txt');
+        const url = browser.runtime.getURL("domains.txt");
         const response = await fetch(url);
         const text = await response.text();
 
-        blockedDomainsSet.clear();
-        blockedPatterns = [];
+        const domains = new Set();
+        const patterns = [];
 
-        text
-            .split('\n')
-            .map(line => line.trim().toLowerCase())
-            .filter(line => line && !line.startsWith('#'))
-            .forEach(line => {
-                if (line.includes('/')) {
-                    blockedPatterns.push(line);
-                } else {
-                    blockedDomainsSet.add(line);
-                }
-            });
+        // Parse em passada unica, sem split/map/filter (evitava ~4 arrays de
+        // 72k+ strings e toneladas de alocacoes no startup).
+        const len = text.length;
+        let pos = 0;
+        while (pos < len) {
+            let nl = text.indexOf("\n", pos);
+            if (nl === -1) nl = len;
 
-        // Compilar regex uma única vez ao carregar
-        if (blockedPatterns.length > 0) {
-            const escapedPatterns = blockedPatterns.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-            blockedPatternRegex = new RegExp(escapedPatterns.join('|'));
+            let line = text.substring(pos, nl).trim();
+            pos = nl + 1;
+
+            if (line.length === 0 || line.charCodeAt(0) === 35 /* # */) continue;
+
+            line = line.toLowerCase();
+            if (line.indexOf("/") !== -1) {
+                patterns.push(line);
+            } else {
+                domains.add(line);
+            }
         }
 
+        blockedDomainsSet = domains;
+        blockedPatterns = patterns;
 
-        console.log(`Blocklist carregada: ${blockedDomainsSet.size} domínios, ${blockedPatterns.length} padrões de URL`);
+        // Compila a regex uma unica vez ao carregar.
+        blockedPatternRegex = patterns.length
+            ? new RegExp(patterns.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"))
+            : null;
 
+        // A blocklist mudou: o cache antigo pode conter decisoes erradas.
+        hostCache.clear();
 
+        if (DEBUG) {
+            console.log(`Blocklist carregada: ${domains.size} dominios, ${patterns.length} padroes de URL`);
+        }
     } catch (err) {
         console.error("Erro ao carregar blocklist:", err);
     }
@@ -49,81 +77,80 @@ async function loadBlocklist() {
 
 loadBlocklist();
 
+// Extrai o hostname sem alocacoes desnecessarias e tratando porta/credenciais.
+// Retorna null para esquemas sem "://" (data:, blob:, about:, etc).
 function extractHostname(url) {
-    let start = url.indexOf("://");
-    if (start === -1) return null;
-    start += 3;
+    const schemeEnd = url.indexOf("://");
+    if (schemeEnd === -1) return null;
 
-    let end = url.indexOf("/", start);
-    if (end === -1) end = url.length;
-
-    return url.substring(start, end);
-}
-
-function isBlocked(hostname, fullUrl) {
-    // Verificar padrões de URL com regex compilado (muito mais rápido)
-    if (blockedPatternRegex && blockedPatternRegex.test(fullUrl)) {
-        return true;
+    const start = schemeEnd + 3;
+    let end = url.length;
+    for (let i = start; i < end; i++) {
+        const c = url.charCodeAt(i);
+        if (c === 47 /* / */ || c === 63 /* ? */ || c === 35 /* # */) {
+            end = i;
+            break;
+        }
     }
 
-    const hostnameLower = hostname.toLowerCase();
-    // if (hostnameLower.startsWith('rr2') || hostnameLower.startsWith('rr3') || hostnameLower.startsWith('rr4') || hostnameLower.startsWith('rr5') || hostnameLower.startsWith('rr6') || hostnameLower.startsWith('rr7') || hostnameLower.startsWith('rr8') || hostnameLower.startsWith('rr1')) {
-    //     return true;
-    // }
+    let host = url.substring(start, end);
 
-    // Depois verificar domínios
-    let dotIndex = 0;
+    // Remove credenciais (user:pass@host)
+    const at = host.lastIndexOf("@");
+    if (at !== -1) host = host.substring(at + 1);
 
+    // Remove porta, exceto em IPv6 literal ([::1])
+    if (host.charCodeAt(0) !== 91 /* [ */) {
+        const colon = host.indexOf(":");
+        if (colon !== -1) host = host.substring(0, colon);
+    }
+
+    return host.toLowerCase();
+}
+
+// Procura o host e cada dominio-pai no Set (a.b.example.com -> b.example.com
+// -> example.com -> com).
+function isBlockedHost(host) {
+    let idx = 0;
     while (true) {
-        if (blockedDomainsSet.has(hostnameLower.substring(dotIndex))) {
-            return true;
-        }
+        if (blockedDomainsSet.has(host.substring(idx))) return true;
 
-        dotIndex = hostnameLower.indexOf('.', dotIndex);
-        if (dotIndex === -1) break;
-
-        dotIndex++;
+        idx = host.indexOf(".", idx);
+        if (idx === -1) return false;
+        idx++;
     }
-
-    return false;
 }
 
-function checkUrl(url) {
-    if (cache.has(url)) {
-        return cache.get(url);
-    }
+function isBlocked(url, hostname) {
+    // Padroes de URL (poucos) sao testados contra a URL completa.
+    if (blockedPatternRegex !== null && blockedPatternRegex.test(url)) return true;
 
-    const hostname = extractHostname(url);
+    const cached = hostCache.get(hostname);
+    if (cached !== undefined) return cached;
 
-    if (!hostname) return;
-    
-    const result = isBlocked(hostname, url) ? { cancel: true } : {};
-    if (DEBUG) {
-        if (result.cancel) {
-            console.log("Bloqueado: ", url)
-        } else {
-            console.log("Permitido: ", url)
-        }
-    }
-
-    cache.set(url, result);
-
-    if (cache.size > MAX_CACHE) {
-        cache.clear();
-    }
-
-    return result;
+    const blocked = isBlockedHost(hostname);
+    cacheHostResult(hostname, blocked);
+    return blocked;
 }
 
 browser.webRequest.onBeforeRequest.addListener(
     function (details) {
         if (blockedDomainsSet.size === 0) return;
 
+        const url = details.url;
+        const hostname = extractHostname(url);
+        if (hostname === null || hostname.length === 0) return;
+
         try {
-            return checkUrl(details.url);
+            if (isBlocked(url, hostname)) {
+                if (DEBUG) console.log("Bloqueado: ", url);
+                return { cancel: true };
+            }
         } catch (e) {
-            console.warn("Erro:", e);
+            if (DEBUG) console.warn("Erro:", e);
         }
+
+        // Retorna undefined (em vez de {}) para nao alocar objeto a cada request permitido.
     },
     { urls: ["<all_urls>"] },
     ["blocking"]
