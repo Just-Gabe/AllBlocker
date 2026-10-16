@@ -1,0 +1,7 @@
+# Arquivos que não precisam ir para o pacote da extensão (.xpi/.zip).
+# A extensão em execução usa apenas: manifest.json, rules.json, icons/.
+domains.txt
+tools/
+README.md
+adblock.js
+.webextignore
